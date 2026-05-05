@@ -1,0 +1,32 @@
+# Framework
+fastapi
+uvicorn[standard]
+
+# LangChain + Ollama
+langchain
+langchain-ollama
+langchain-community
+
+# Database
+prisma
+asyncpg
+
+# AI/ML
+psutil
+
+# Auth
+python-jose[cryptography]
+httpx
+
+# Utils
+python-dotenv
+python-multipart
+pydantic
+pydantic-settings
+
+# Export
+reportlab
+markdown
+
+# Voice
+SpeechRecognition
