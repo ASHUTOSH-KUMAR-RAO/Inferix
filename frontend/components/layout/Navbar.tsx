@@ -7,7 +7,6 @@ import { useState } from "react";
 
 const navLinks = ["Features", "Models", "Benchmark", "Compare", "Docs"];
 
-// Animated Hamburger Icon
 function HamburgerIcon({ isOpen }: { isOpen: boolean }) {
   return (
     <motion.div
@@ -16,30 +15,19 @@ function HamburgerIcon({ isOpen }: { isOpen: boolean }) {
       className="w-5 h-5 flex flex-col justify-center items-center gap-[5px]"
     >
       <motion.span
-        animate={{
-          rotate: isOpen ? 45 : 0,
-          y: isOpen ? 7 : 0,
-          width: isOpen ? "20px" : "20px",
-        }}
+        animate={{ rotate: isOpen ? 45 : 0, y: isOpen ? 7 : 0 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className="block h-[1.5px] bg-white/70 rounded-full origin-center"
         style={{ width: "20px" }}
       />
       <motion.span
-        animate={{
-          opacity: isOpen ? 0 : 1,
-          scaleX: isOpen ? 0 : 1,
-        }}
+        animate={{ opacity: isOpen ? 0 : 1, scaleX: isOpen ? 0 : 1 }}
         transition={{ duration: 0.2 }}
         className="block h-[1.5px] bg-white/70 rounded-full"
         style={{ width: "14px" }}
       />
       <motion.span
-        animate={{
-          rotate: isOpen ? -45 : 0,
-          y: isOpen ? -7 : 0,
-          width: isOpen ? "20px" : "20px",
-        }}
+        animate={{ rotate: isOpen ? -45 : 0, y: isOpen ? -7 : 0 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className="block h-[1.5px] bg-white/70 rounded-full origin-center"
         style={{ width: "20px" }}
@@ -98,13 +86,13 @@ export default function Navbar() {
       <div className="md:hidden">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger>
-            <motion.button
+            <motion.div
               whileTap={{ scale: 0.88 }}
               whileHover={{ scale: 1.08 }}
-              className="w-9 h-9 flex items-center justify-center rounded-[8px] bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-[8px] bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-colors cursor-pointer"
             >
               <HamburgerIcon isOpen={open} />
-            </motion.button>
+            </motion.div>
           </SheetTrigger>
 
           <SheetContent
