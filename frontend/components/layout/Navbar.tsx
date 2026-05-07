@@ -1,6 +1,7 @@
 "use client";
 
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { UserButton, useUser } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
@@ -38,6 +39,7 @@ function HamburgerIcon({ isOpen }: { isOpen: boolean }) {
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const { isSignedIn } = useUser();
 
   return (
     <motion.nav
@@ -67,19 +69,33 @@ export default function Navbar() {
       </div>
 
       {/* Desktop Right */}
-      <div className="hidden md:flex items-center gap-2">
-        <Link
-          href="/sign-in"
-          className="text-white/50 text-[13px] px-3 cursor-pointer hover:text-white/80 transition-colors"
-        >
-          Sign in
-        </Link>
-        <Link
-          href="/sign-up"
-          className="bg-white text-black text-[13px] font-medium px-4 py-[7px] rounded-[8px] hover:bg-white/90 transition-all"
-        >
-          Get started
-        </Link>
+      <div className="hidden md:flex items-center gap-3">
+        {isSignedIn ? (
+          <>
+            <Link
+              href="/dashboard"
+              className="text-white/50 text-[13px] px-3 cursor-pointer hover:text-white/80 transition-colors"
+            >
+              Dashboard
+            </Link>
+            <UserButton />
+          </>
+        ) : (
+          <>
+            <Link
+              href="/sign-in"
+              className="text-white/50 text-[13px] px-3 cursor-pointer hover:text-white/80 transition-colors"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/sign-up"
+              className="bg-white text-black text-[13px] font-medium px-4 py-[7px] rounded-[8px] hover:bg-white/90 transition-all"
+            >
+              Get started
+            </Link>
+          </>
+        )}
       </div>
 
       {/* Mobile Hamburger */}
@@ -132,20 +148,37 @@ export default function Navbar() {
 
             {/* Mobile Buttons */}
             <div className="absolute bottom-8 left-0 right-0 px-5 flex flex-col gap-2">
-              <Link
-                href="/sign-in"
-                onClick={() => setOpen(false)}
-                className="w-full text-center text-[13px] text-white/50 border border-white/10 py-2.5 rounded-[8px] hover:bg-white/[0.05] transition-all"
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/sign-up"
-                onClick={() => setOpen(false)}
-                className="w-full text-center bg-white text-black text-[13px] font-medium py-2.5 rounded-[8px] hover:bg-white/90 transition-all"
-              >
-                Get started
-              </Link>
+              {isSignedIn ? (
+                <>
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setOpen(false)}
+                    className="w-full text-center text-[13px] text-white/50 border border-white/10 py-2.5 rounded-[8px] hover:bg-white/[0.05] transition-all"
+                  >
+                    Dashboard
+                  </Link>
+                  <div className="flex justify-center">
+                    <UserButton />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/sign-in"
+                    onClick={() => setOpen(false)}
+                    className="w-full text-center text-[13px] text-white/50 border border-white/10 py-2.5 rounded-[8px] hover:bg-white/[0.05] transition-all"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    onClick={() => setOpen(false)}
+                    className="w-full text-center bg-white text-black text-[13px] font-medium py-2.5 rounded-[8px] hover:bg-white/90 transition-all"
+                  >
+                    Get started
+                  </Link>
+                </>
+              )}
             </div>
           </SheetContent>
         </Sheet>
