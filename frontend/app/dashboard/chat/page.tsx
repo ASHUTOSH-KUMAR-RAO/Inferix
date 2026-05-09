@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Plus, ChevronDown, Trash2 } from "lucide-react";
+import { MessageSquare, Plus, ChevronDown, Trash2, X } from "lucide-react";
 import ChatInput from "@/components/chat/ChatInput";
 import {
   DropdownMenu,
@@ -191,9 +191,9 @@ export default function ChatPage() {
                         e.stopPropagation();
                         deleteChat(chat.id);
                       }}
-                      className="mr-1.5 p-0.5 rounded-[4px] text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
+                      className="..."
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <X className="w-3 h-3" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="text-[11px]">
