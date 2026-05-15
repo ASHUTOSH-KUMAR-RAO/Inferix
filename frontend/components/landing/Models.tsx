@@ -40,8 +40,8 @@ const models = [
 
 export default function Models() {
   return (
-    <section className="py-20 px-5 border-b border-white/[0.06]">
-      <div className="max-w-[960px] mx-auto">
+    <section id="models" className="py-20 px-5 border-b border-white/[0.06]">
+      <div id="benchmark" className="max-w-[960px] mx-auto">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
