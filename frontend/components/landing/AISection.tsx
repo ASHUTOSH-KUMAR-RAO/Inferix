@@ -76,7 +76,7 @@ const aiFeats = [
 
 export default function AISection() {
   return (
-    <section className="py-12 sm:py-20 px-4 sm:px-6 border-b border-white/[0.06] bg-[#0a0a0a] relative overflow-hidden">
+    <section id="compare" className="py-12 sm:py-20 px-4 sm:px-6 border-b border-white/[0.06] bg-[#0a0a0a] relative overflow-hidden">
 
       {/* Glows */}
       <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[300px] sm:w-[600px] h-[240px] sm:h-[320px] rounded-full bg-red-900/[0.28] blur-[100px] pointer-events-none" />

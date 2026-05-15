@@ -85,7 +85,7 @@ export default function Features() {
   }
 
   return (
-    <section className="py-16 sm:py-20 bg-[#0a0a0a] border-b border-white/[0.06] relative overflow-hidden">
+    <section id="features" className="py-16 sm:py-20 bg-[#0a0a0a] border-b border-white/[0.06] relative overflow-hidden">
 
       {/* Glows */}
       <div className="absolute -top-20 -right-16 w-[300px] sm:w-[500px] h-[300px] sm:h-[380px] rounded-full bg-red-900/30 blur-[100px] pointer-events-none" />

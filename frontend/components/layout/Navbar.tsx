@@ -6,7 +6,12 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
 
-const navLinks = ["Features", "Models", "Benchmark", "Compare", "Docs"];
+const navLinks = [
+  { label: "Features", href: "#features" },
+  { label: "Models", href: "#models" },
+  { label: "Benchmark", href: "#benchmark" },
+  { label: "Compare", href: "#compare" },
+];
 
 function HamburgerIcon({ isOpen }: { isOpen: boolean }) {
   return (
@@ -59,12 +64,13 @@ export default function Navbar() {
       {/* Desktop Nav Links */}
       <div className="hidden md:flex items-center">
         {navLinks.map((item) => (
-          <span
-            key={item}
+          <Link
+            key={item.label}
+            href={item.href}
             className="text-[13px] text-white/40 px-4 cursor-pointer hover:text-white/80 transition-colors"
           >
-            {item}
-          </span>
+            {item.label}
+          </Link>
         ))}
       </div>
 
@@ -101,7 +107,7 @@ export default function Navbar() {
       {/* Mobile Hamburger */}
       <div className="md:hidden">
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger>
+          <SheetTrigger >
             <motion.div
               whileTap={{ scale: 0.88 }}
               whileHover={{ scale: 1.08 }}
@@ -117,31 +123,36 @@ export default function Navbar() {
           >
             {/* Mobile Header */}
             <div className="flex items-center px-5 h-14 border-b border-white/[0.07]">
-              <div className="flex items-center gap-2">
+              <Link
+                href="/"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2"
+              >
                 <div className="w-6 h-6 rounded-[7px] bg-red-500/20 border border-red-500/40 flex items-center justify-center">
                   <div className="w-2 h-2 rounded-full bg-red-500" />
                 </div>
                 <span className="text-white font-medium text-[15px]">
                   Inferix
                 </span>
-              </div>
+              </Link>
             </div>
 
             {/* Mobile Links */}
             <div className="flex flex-col px-3 py-4 gap-1">
               {navLinks.map((item, i) => (
                 <motion.div
-                  key={item}
+                  key={item.label}
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.06 }}
                 >
-                  <span
+                  <Link
+                    href={item.href}
                     onClick={() => setOpen(false)}
-                    className="flex items-center text-[14px] text-white/50 hover:text-white hover:bg-white/[0.06] px-3 py-2.5 rounded-[8px] cursor-pointer transition-all"
+                    className="flex items-center text-[14px] text-white/50 hover:text-white hover:bg-white/[0.06] px-3 py-2.5 rounded-[8px] transition-all"
                   >
-                    {item}
-                  </span>
+                    {item.label}
+                  </Link>
                 </motion.div>
               ))}
             </div>
