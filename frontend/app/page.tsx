@@ -19,10 +19,18 @@ export default function Home() {
       <AppPreview />
       <Stats />
       <WhyInferix />
-      <Features />
-      <Models />
-      <Keyboard />
-      <AISection />
+      <div id="features">
+        <Features />
+      </div>
+      <div id="models">
+        <Models />
+      </div>
+      <div id="benchmark">
+        <Keyboard />
+      </div>
+      <div id="compare">
+        <AISection />
+      </div>
       <Privacy />
       <CTA />
       <Footer />
