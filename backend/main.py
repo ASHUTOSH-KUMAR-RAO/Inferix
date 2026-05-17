@@ -21,7 +21,7 @@ from app.routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # Startup — DB lazy connect on first request
     await connect_db()
     yield
     # Shutdown
@@ -38,7 +38,7 @@ app = FastAPI(
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=settings.origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -58,4 +58,8 @@ app.include_router(voice.router,     prefix="/api/voice",     tags=["Voice"])
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "app": settings.APP_NAME, "version": settings.APP_VERSION}
+    return {
+        "status": "ok",
+        "app": settings.APP_NAME,
+        "version": settings.APP_VERSION
+    }
