@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Plus, Copy, Check, Tag, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { api } from "@/lib/api";
 
 type Template = {
   id: string;
@@ -24,83 +25,83 @@ const CATEGORIES = [
 
 const DEFAULT_TEMPLATES: Template[] = [
   {
-    id: "1",
+    id: "d1",
     title: "Explain like I'm 5",
     content:
       "Explain [topic] in simple terms that a 5-year-old could understand.",
     category: "Writing",
   },
   {
-    id: "2",
+    id: "d2",
     title: "Code Review",
     content:
       "Review the following code and suggest improvements for readability, performance, and best practices:\n\n[paste code here]",
     category: "Coding",
   },
   {
-    id: "3",
+    id: "d3",
     title: "Debug Helper",
     content:
       "I'm getting this error: [error message]\n\nHere's my code:\n[paste code]\n\nWhat's wrong and how do I fix it?",
     category: "Coding",
   },
   {
-    id: "4",
+    id: "d4",
     title: "Summarize Text",
     content:
       "Summarize the following text in 3-5 bullet points:\n\n[paste text here]",
     category: "Analysis",
   },
   {
-    id: "5",
+    id: "d5",
     title: "Write a Blog Post",
     content:
       "Write a blog post about [topic]. Include an introduction, 3 main points, and a conclusion. Make it engaging and informative.",
     category: "Writing",
   },
   {
-    id: "6",
+    id: "d6",
     title: "Pros and Cons",
     content:
       "List the pros and cons of [topic]. Be objective and comprehensive.",
     category: "Analysis",
   },
   {
-    id: "7",
+    id: "d7",
     title: "Write a Story",
     content:
       "Write a short story about [topic]. Include interesting characters, a conflict, and a resolution.",
     category: "Creative",
   },
   {
-    id: "8",
+    id: "d8",
     title: "Python Function",
     content:
       "Write a Python function that [description]. Include type hints, docstring, and example usage.",
     category: "Coding",
   },
   {
-    id: "9",
+    id: "d9",
     title: "Translate Text",
     content: "Translate the following text to [language]:\n\n[paste text here]",
     category: "Writing",
   },
   {
-    id: "10",
+    id: "d10",
     title: "Compare Two Things",
     content:
       "Compare and contrast [thing 1] and [thing 2]. Cover similarities, differences, pros, and cons of each.",
     category: "Analysis",
   },
   {
-    id: "11",
+    id: "d11",
     title: "Haiku Generator",
     content:
       "Write a haiku about [topic]. Follow the 5-7-5 syllable structure.",
     category: "Creative",
   },
   {
-    id: "12",
+    id: "d12",
     title: "SQL Query",
     content: "Write a SQL query to [description]. Explain what each part does.",
     category: "Coding",
@@ -124,6 +125,32 @@ export default function TemplatesPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
   const [newCategory, setNewCategory] = useState("Custom");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch templates from backend on mount
+  useEffect(() => {
+    async function fetchTemplates() {
+      try {
+        const response = await api.templates.list();
+        if (response.templates.length > 0) {
+          // Merge backend templates with default templates
+          const backendTemplates = response.templates.map((t: any) => ({
+            id: t.id,
+            title: t.title,
+            content: t.content,
+            category: t.category || "Custom",
+            isCustom: true,
+          }));
+          setTemplates([...backendTemplates, ...DEFAULT_TEMPLATES]);
+        }
+      } catch (err) {
+        // If backend fails, just show default templates
+        console.error("Failed to fetch templates:", err);
+      }
+    }
+    fetchTemplates();
+  }, []);
 
   const filtered = templates.filter((t) => {
     const matchCat = activeCategory === "All" || t.category === activeCategory;
@@ -139,22 +166,49 @@ export default function TemplatesPage() {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
-  function handleAdd() {
+  async function handleAdd() {
     if (!newTitle.trim() || !newContent.trim()) return;
-    const newTemplate: Template = {
-      id: Date.now().toString(),
-      title: newTitle.trim(),
-      content: newContent.trim(),
-      category: newCategory,
-      isCustom: true,
-    };
-    setTemplates((prev) => [newTemplate, ...prev]);
-    setNewTitle("");
-    setNewContent("");
-    setShowAdd(false);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Save to backend
+      const created = (await api.templates.create({
+        title: newTitle.trim(),
+        content: newContent.trim(),
+        category: newCategory,
+        tags: [],
+      })) as any;
+
+      const newTemplate: Template = {
+        id: created.id || Date.now().toString(),
+        title: newTitle.trim(),
+        content: newContent.trim(),
+        category: newCategory,
+        isCustom: true,
+      };
+
+      setTemplates((prev) => [newTemplate, ...prev]);
+      setNewTitle("");
+      setNewContent("");
+      setShowAdd(false);
+    } catch (err) {
+      setError("Failed to save template. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
+    // Only delete from backend if it's a custom template (not default)
+    const template = templates.find((t) => t.id === id);
+    if (template?.isCustom && !id.startsWith("d")) {
+      try {
+        await api.templates.delete(id);
+      } catch (err) {
+        console.error("Failed to delete template:", err);
+      }
+    }
     setTemplates((prev) => prev.filter((t) => t.id !== id));
   }
 
@@ -184,6 +238,13 @@ export default function TemplatesPage() {
 
       <div className="flex-1">
         <div className="px-4 md:px-6 py-4 max-w-[900px] mx-auto space-y-4 pb-8">
+          {/* Error Banner */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-[10px] px-4 py-3 text-red-400 text-[13px]">
+              {error}
+            </div>
+          )}
+
           {/* Add Template Form */}
           <AnimatePresence>
             {showAdd && (
@@ -242,10 +303,12 @@ export default function TemplatesPage() {
                     </button>
                     <button
                       onClick={handleAdd}
-                      disabled={!newTitle.trim() || !newContent.trim()}
+                      disabled={
+                        !newTitle.trim() || !newContent.trim() || isLoading
+                      }
                       className="flex-1 py-2 rounded-[8px] text-[13px] text-white font-medium bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-40"
                     >
-                      Save Template
+                      {isLoading ? "Saving..." : "Save Template"}
                     </button>
                   </div>
                 </div>
@@ -299,7 +362,6 @@ export default function TemplatesPage() {
                   transition={{ delay: i * 0.04 }}
                   className="bg-[#111] border border-white/[0.07] rounded-[14px] p-4 hover:border-white/[0.12] transition-colors group"
                 >
-                  {/* Top */}
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h3 className="text-[13px] font-medium text-white/80">
                       {template.title}
@@ -327,12 +389,10 @@ export default function TemplatesPage() {
                     </div>
                   </div>
 
-                  {/* Content Preview */}
                   <p className="text-[12px] text-white/30 leading-relaxed line-clamp-3 mb-3">
                     {template.content}
                   </p>
 
-                  {/* Footer */}
                   <div className="flex items-center justify-between">
                     <Badge
                       variant="outline"
@@ -350,7 +410,6 @@ export default function TemplatesPage() {
             </AnimatePresence>
           </div>
 
-          {/* Empty Search State */}
           {filtered.length === 0 && (
             <motion.div
               initial={{ opacity: 0 }}

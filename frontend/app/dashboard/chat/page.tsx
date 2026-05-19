@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Plus, ChevronDown, Trash2, X } from "lucide-react";
+import { MessageSquare, Plus, ChevronDown, X } from "lucide-react";
 import ChatInput from "@/components/chat/ChatInput";
 import {
   DropdownMenu,
@@ -18,26 +18,13 @@ import {
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { api } from "@/lib/api";
+import { MODEL_IDS, DEFAULT_MODEL } from "@/lib/constants";
 
 const MODELS = [
-  {
-    id: "gemma:2b",
-    label: "gemma:2b",
-    speed: "52 tok/s",
-    color: "text-green-400",
-  },
-  {
-    id: "phi3:mini",
-    label: "phi3:mini",
-    speed: "38 tok/s",
-    color: "text-blue-400",
-  },
-  {
-    id: "llama3.2:3b",
-    label: "llama3.2:3b",
-    speed: "28 tok/s",
-    color: "text-yellow-400",
-  },
+  { id: "gemma:2b", label: "gemma:2b", color: "text-green-400" },
+  { id: "phi3:mini", label: "phi3:mini", color: "text-blue-400" },
+  { id: "llama3.2:3b", label: "llama3.2:3b", color: "text-yellow-400" },
 ];
 
 type Message = {
@@ -64,7 +51,7 @@ export default function ChatPage() {
   ]);
   const [activeChatId, setActiveChatId] = useState("1");
   const [isLoading, setIsLoading] = useState(false);
-
+  const [error, setError] = useState<string | null>(null);
 
   const activeChat = chats.find((c) => c.id === activeChatId)!;
 
@@ -91,6 +78,7 @@ export default function ChatPage() {
   async function handleSend(message: string) {
     if (!message.trim()) return;
     setIsLoading(true);
+    setError(null);
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -98,34 +86,35 @@ export default function ChatPage() {
       content: message,
     };
 
-    // Update chat title
+    // Add user message
     setChats((prev) =>
       prev.map((c) =>
         c.id === activeChatId
           ? {
               ...c,
-              title:
-                c.messages.length === 0
-                  ? message.slice(0, 30) + "..."
-                  : c.title,
+              title: c.messages.length === 0 ? message.slice(0, 30) + "..." : c.title,
               messages: [...c.messages, userMsg],
             }
           : c
       )
     );
 
-    // Simulate AI response — backend se connect karenge baad mein
-    setTimeout(() => {
+    try {
+      // Real API call to backend
+      const response = await api.chat.send({
+        message,
+        model: selectedModel.id,
+      });
+
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "ai",
-        content:
-          "This is a placeholder response. Backend will be connected soon to run actual Ollama inference locally on your machine.",
+        content: response.content,
         model: selectedModel.id,
-        tokensPerSec: Math.floor(Math.random() * 20) + 30,
-        latency: Math.floor(Math.random() * 200) + 200,
-        ram: "1.6 GB",
-        score: Math.floor(Math.random() * 2) + 8,
+        tokensPerSec: response.tokensPerSec,
+        latency: response.latency,
+        ram: response.ram,
+        score: response.score,
       };
 
       setChats((prev) =>
@@ -135,15 +124,17 @@ export default function ChatPage() {
             : c
         )
       );
+    } catch (err) {
+      setError("Failed to get response. Make sure Ollama is running.");
+    } finally {
       setIsLoading(false);
-    }, 1200);
+    }
   }
 
   return (
     <div className="flex h-screen bg-[#0a0a0a]">
       {/* Chat Sidebar */}
       <div className="hidden md:flex w-[200px] flex-col border-r border-white/[0.06] bg-[#0d0d0d] flex-shrink-0">
-        {/* New Chat Button */}
         <div className="p-3 border-b border-white/[0.06]">
           <button
             onClick={newChat}
@@ -154,13 +145,11 @@ export default function ChatPage() {
           </button>
         </div>
 
-        {/* Chat History */}
         <ScrollArea className="flex-1 p-2">
           <div className="text-[10px] text-white/20 uppercase tracking-[0.8px] px-2 mb-2">
             History
           </div>
-
-          <TooltipProvider delay={300}>
+          <TooltipProvider>
             {chats.map((chat) => (
               <div
                 key={chat.id}
@@ -170,10 +159,9 @@ export default function ChatPage() {
                     : "hover:bg-white/[0.03]"
                 }`}
               >
-                {/* Chat select button */}
                 <button
                   onClick={() => setActiveChatId(chat.id)}
-                  className={`flex-1 flex items-center gap-2 px-2.5 py-2 text-left transition-colors min-w-0 ${
+                  className={`flex-1 flex items-center gap-2 px-2.5 py-2 text-left min-w-0 ${
                     chat.id === activeChatId
                       ? "text-white/80"
                       : "text-white/35 hover:text-white/55"
@@ -182,16 +170,14 @@ export default function ChatPage() {
                   <MessageSquare className="w-3 h-3 flex-shrink-0" />
                   <span className="text-[12px] truncate">{chat.title}</span>
                 </button>
-
-                {/* Delete button — pure CSS group-hover, no React state */}
                 <Tooltip>
-                  <TooltipTrigger >
+                  <TooltipTrigger>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteChat(chat.id);
                       }}
-                      className="..."
+                      className="opacity-0 group-hover:opacity-100 p-1.5 mr-1 text-white/30 hover:text-red-400 transition-all"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -208,9 +194,8 @@ export default function ChatPage() {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Chat Header */}
+        {/* Header */}
         <div className="flex items-center justify-between px-4 h-14 border-b border-white/[0.06] flex-shrink-0">
-          {/* Model Selector */}
           <DropdownMenu>
             <DropdownMenuTrigger>
               <div className="flex items-center gap-2 bg-[#111] border border-white/[0.08] rounded-[8px] px-3 py-1.5 hover:bg-[#161616] transition-colors cursor-pointer">
@@ -226,23 +211,26 @@ export default function ChatPage() {
                 <DropdownMenuItem
                   key={model.id}
                   onClick={() => setSelectedModel(model)}
-                  className="flex items-center justify-between gap-4 cursor-pointer hover:bg-white/[0.05]"
+                  className="cursor-pointer hover:bg-white/[0.05]"
                 >
                   <span className="text-[13px]">{model.label}</span>
-                  <span className={`text-[11px] ${model.color}`}>
-                    {model.speed}
-                  </span>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Privacy Badge */}
           <div className="flex items-center gap-1.5 text-[11px] text-green-400/70">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
             100% local
           </div>
         </div>
+
+        {/* Error Banner */}
+        {error && (
+          <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/20 text-red-400 text-[12px]">
+            {error}
+          </div>
+        )}
 
         {/* Messages */}
         <ScrollArea className="flex-1 px-4 py-4">
@@ -279,7 +267,6 @@ export default function ChatPage() {
                     <div
                       className={`max-w-[80%] ${msg.role === "user" ? "" : "w-full"}`}
                     >
-                      {/* Bubble */}
                       <div
                         className={`px-4 py-3 rounded-[14px] text-[13px] leading-relaxed ${
                           msg.role === "user"
@@ -290,7 +277,7 @@ export default function ChatPage() {
                         {msg.content}
                       </div>
 
-                      {/* Benchmark tags — only for AI */}
+                      {/* Real benchmark metrics */}
                       {msg.role === "ai" && msg.tokensPerSec && (
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                           <Badge
@@ -311,12 +298,14 @@ export default function ChatPage() {
                           >
                             {msg.ram}
                           </Badge>
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] bg-red-500/10 border-red-500/20 text-red-400 px-2 py-0.5"
-                          >
-                            Score {msg.score}/10
-                          </Badge>
+                          {msg.score !== undefined && msg.score !== null && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] bg-red-500/10 border-red-500/20 text-red-400 px-2 py-0.5"
+                            >
+                              Score {msg.score}/10
+                            </Badge>
+                          )}
                           <span className="text-[10px] text-white/20">
                             {msg.model}
                           </span>
@@ -356,7 +345,6 @@ export default function ChatPage() {
           )}
         </ScrollArea>
 
-        {/* Chat Input */}
         <ChatInput onSend={handleSend} isLoading={isLoading} />
       </div>
     </div>

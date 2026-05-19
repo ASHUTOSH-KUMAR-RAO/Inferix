@@ -7,18 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import BenchmarkChart from "@/components/benchmark/BenchmarkChart";
 import BenchmarkHistory from "@/components/benchmark/BenchmarkHistory";
+import { api } from "@/lib/api";
+import { BENCHMARK_PROMPTS } from "@/lib/constants";
 
 const MODELS = [
   { id: "gemma:2b", color: "#22c55e", label: "gemma:2b" },
   { id: "phi3:mini", color: "#3b82f6", label: "phi3:mini" },
   { id: "llama3.2:3b", color: "#eab308", label: "llama3.2:3b" },
-];
-
-const PROMPTS = [
-  "Explain quantum computing in simple terms",
-  "Write a Python function to sort a list",
-  "Summarize the history of artificial intelligence",
-  "What are the benefits of exercise?",
 ];
 
 type BenchmarkResult = {
@@ -39,42 +34,53 @@ type HistoryEntry = {
 
 export default function BenchmarkPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [selectedPrompt, setSelectedPrompt] = useState(PROMPTS[0]);
+  const [selectedPrompt, setSelectedPrompt] = useState(BENCHMARK_PROMPTS[0]);
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<BenchmarkResult[]>([]);
   const [hasRun, setHasRun] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function runBenchmark() {
     setIsRunning(true);
     setHasRun(true);
     setResults([]);
-    setHistory((prev) => [
-      {
-        id: Date.now().toString(),
-        timestamp: new Date().toLocaleString(),
+    setError(null);
+
+    try {
+      // Real API call to backend
+      const response = await api.benchmark.run({
         prompt: selectedPrompt,
-        results: [], // Will be updated after benchmark completes
-      },
-      ...prev,
-    ]);
-    // Simulate benchmark — backend se connect karenge baad mein
-    setTimeout(() => {
-      const mockResults: BenchmarkResult[] = MODELS.map((m, i) => ({
-        model: m.id,
-        tokensPerSec: [52, 38, 28][i],
-        latency: [310, 420, 580][i],
-        ram: ["1.6 GB", "2.3 GB", "2.0 GB"][i],
-        score: [7.2, 8.6, 9.1][i],
+        models: MODELS.map((m) => m.id),
+      });
+
+      const benchmarkResults: BenchmarkResult[] = response.results.map((r) => ({
+        ...r,
         prompt: selectedPrompt,
       }));
-      setResults(mockResults);
+
+      setResults(benchmarkResults);
+
+      // Add to history
+      setHistory((prev) => [
+        {
+          id: Date.now().toString(),
+          timestamp: new Date().toLocaleString(),
+          prompt: selectedPrompt,
+          results: benchmarkResults,
+        },
+        ...prev,
+      ]);
+    } catch (err) {
+      setError("Benchmark failed. Make sure Ollama is running.");
+    } finally {
       setIsRunning(false);
-    }, 2500);
+    }
   }
 
   function reset() {
     setResults([]);
     setHasRun(false);
+    setError(null);
   }
 
   return (
@@ -115,13 +121,20 @@ export default function BenchmarkPage() {
 
       <ScrollArea className="flex-1">
         <div className="px-4 md:px-6 py-4 max-w-[1000px] mx-auto space-y-4 pb-8">
+          {/* Error Banner */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-[10px] px-4 py-3 text-red-400 text-[13px]">
+              {error}
+            </div>
+          )}
+
           {/* Prompt Selector */}
           <div className="bg-[#111] border border-white/[0.07] rounded-[14px] p-4">
             <div className="text-[11px] text-white/25 uppercase tracking-[0.8px] mb-3">
               Select Test Prompt
             </div>
             <div className="flex flex-col gap-2">
-              {PROMPTS.map((p) => (
+              {BENCHMARK_PROMPTS.map((p) => (
                 <button
                   key={p}
                   onClick={() => setSelectedPrompt(p)}
@@ -167,7 +180,6 @@ export default function BenchmarkPage() {
           {/* Results */}
           {results.length > 0 && (
             <>
-              {/* Model Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {results.map((r, i) => (
                   <motion.div
@@ -180,7 +192,7 @@ export default function BenchmarkPage() {
                     <div className="flex items-center justify-between mb-3">
                       <span
                         className="text-[13px] font-medium"
-                        style={{ color: MODELS[i].color }}
+                        style={{ color: MODELS[i]?.color }}
                       >
                         {r.model}
                       </span>
@@ -247,11 +259,11 @@ export default function BenchmarkPage() {
                   </motion.div>
                 ))}
               </div>
-
-              {/* Charts */}
               <BenchmarkChart results={results} />
             </>
           )}
+
+          {/* History */}
           <div>
             <div className="text-[11px] text-white/25 uppercase tracking-[0.8px] mb-3">
               History
@@ -263,6 +275,7 @@ export default function BenchmarkPage() {
               }
             />
           </div>
+
           {/* Empty State */}
           {!hasRun && (
             <motion.div
