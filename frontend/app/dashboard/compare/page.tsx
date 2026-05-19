@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Send } from "lucide-react";
 import ComparePanel from "@/components/compare/ComparePanel";
+import { api } from "@/lib/api";
 
 const MODELS = [
   {
@@ -34,17 +35,21 @@ type ModelResponse = {
   ram: string;
   score: number;
   isLoading: boolean;
+  error?: string;
 };
 
 export default function ComparePage() {
   const [prompt, setPrompt] = useState("");
   const [responses, setResponses] = useState<ModelResponse[]>([]);
   const [hasCompared, setHasCompared] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleCompare() {
     if (!prompt.trim()) return;
     setHasCompared(true);
+    setError(null);
 
+    // Set all models to loading state
     const initial: ModelResponse[] = MODELS.map((m) => ({
       model: m.id,
       content: "",
@@ -56,28 +61,36 @@ export default function ComparePage() {
     }));
     setResponses(initial);
 
-    MODELS.forEach((model, i) => {
-      setTimeout(
-        () => {
-          setResponses((prev) =>
-            prev.map((r) =>
-              r.model === model.id
-                ? {
-                    ...r,
-                    content: `This is a placeholder response from **${model.id}**. When backend is connected, this will show actual Ollama inference output for your prompt: "${prompt}"`,
-                    tokensPerSec: [52, 38, 28][i],
-                    latency: [310, 420, 580][i],
-                    ram: ["1.6 GB", "2.3 GB", "2.0 GB"][i],
-                    score: [7.2, 8.6, 9.1][i],
-                    isLoading: false,
-                  }
-                : r,
-            ),
-          );
-        },
-        (i + 1) * 800,
+    try {
+      // Real API call — all 3 models run in parallel on backend
+      const response = await api.compare.run({ prompt });
+
+      setResponses(
+        response.responses.map((r: any) => ({
+          model: r.model,
+          content: r.content,
+          tokensPerSec: r.tokensPerSec,
+          latency: r.latency,
+          ram: r.ram,
+          score: r.score,
+          isLoading: false,
+        })),
       );
-    });
+    } catch (err) {
+      setError("Comparison failed. Make sure Ollama is running.");
+      setResponses(
+        MODELS.map((m) => ({
+          model: m.id,
+          content: "",
+          tokensPerSec: 0,
+          latency: 0,
+          ram: "",
+          score: 0,
+          isLoading: false,
+          error: "Failed to get response",
+        })),
+      );
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -103,6 +116,13 @@ export default function ComparePage() {
           </p>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="px-4 md:px-6 py-2 bg-red-500/10 border-b border-red-500/20 text-red-400 text-[12px] relative z-10">
+          {error}
+        </div>
+      )}
 
       {/* Prompt Input */}
       <div className="px-4 md:px-6 py-4 border-b border-white/[0.06] flex-shrink-0 relative z-10">
@@ -149,7 +169,7 @@ export default function ComparePage() {
         </div>
       </div>
 
-      {/* Compare Panel — flex-1 + overflow-y-auto for proper scroll */}
+      {/* Compare Panel */}
       <div className="flex-1 overflow-y-auto relative z-10">
         <ComparePanel
           responses={responses}
