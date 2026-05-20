@@ -108,12 +108,25 @@ class OllamaService:
             ram_used_mb = round((ram_after - ram_before) / (1024 ** 2), 1)
             ram_str = f"{ram_used_mb} MB" if ram_used_mb > 0 else "< 1 MB"
 
+            # Calculate quality score using ai_service
+            # Import here to avoid circular imports
+            score = 0.0
+            try:
+                from app.services.ai_service import ai_service
+                result = await ai_service.score_response(
+                    response=content,
+                    prompt=message,
+                )
+                score = result.get("score", 0.0)
+            except Exception:
+                score = 0.0  # Silently fail — score is optional
+
             return {
                 "content": content,
                 "tokensPerSec": tokens_per_sec,
                 "latency": latency,
                 "ram": ram_str,
-                "score": 0.0,  # Will be calculated by ai_service
+                "score": score,
             }
 
         except Exception as e:

@@ -172,15 +172,15 @@ export default function ChatPage() {
                 </button>
                 <Tooltip>
                   <TooltipTrigger>
-                    <button
+                    <span
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteChat(chat.id);
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 mr-1 text-white/30 hover:text-red-400 transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-1.5 mr-1 text-white/30 hover:text-red-400 transition-all cursor-pointer"
                     >
                       <X className="w-3 h-3" />
-                    </button>
+                    </span>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="text-[11px]">
                     Delete chat
