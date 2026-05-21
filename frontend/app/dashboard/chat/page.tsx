@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // ← useEffect add kiya
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Plus, ChevronDown, X } from "lucide-react";
 import ChatInput from "@/components/chat/ChatInput";
@@ -19,7 +19,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/lib/api";
-import { MODEL_IDS, DEFAULT_MODEL } from "@/lib/constants";
 
 const MODELS = [
   { id: "gemma:2b", label: "gemma:2b", color: "text-green-400" },
@@ -55,23 +54,82 @@ export default function ChatPage() {
 
   const activeChat = chats.find((c) => c.id === activeChatId)!;
 
+  // ← Fetch conversations on page load
+  useEffect(() => {
+    async function fetchConversations() {
+      try {
+        const response = await api.chat.conversations();
+        if (response.conversations.length > 0) {
+          const loadedChats: Chat[] = response.conversations.map((c: any) => ({
+            id: c.id,
+            title: c.title,
+            messages: [],
+          }));
+          setChats(loadedChats);
+          setActiveChatId(loadedChats[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch conversations:", err);
+      }
+    }
+    fetchConversations();
+  }, []);
+
   function newChat() {
     const id = Date.now().toString();
     setChats((prev) => [...prev, { id, title: "New Chat", messages: [] }]);
     setActiveChatId(id);
   }
 
-  function deleteChat(chatId: string) {
-    const remaining = chats.filter((c) => c.id !== chatId);
-    setChats(remaining);
-    if (activeChatId === chatId) {
-      if (remaining.length > 0) {
-        setActiveChatId(remaining[remaining.length - 1].id);
-      } else {
-        const newId = Date.now().toString();
-        setChats([{ id: newId, title: "New Chat", messages: [] }]);
-        setActiveChatId(newId);
-      }
+async function deleteChat(chatId: string) {
+  // Backend se delete karo — sirf real IDs ke liye (numeric nahi)
+  if (isNaN(Number(chatId))) {
+    try {
+      await api.chat.deleteConversation(chatId);
+    } catch (err) {
+      console.error("Failed to delete from backend:", err);
+    }
+  }
+
+  const remaining = chats.filter((c) => c.id !== chatId);
+  setChats(remaining);
+  if (activeChatId === chatId) {
+    if (remaining.length > 0) {
+      setActiveChatId(remaining[remaining.length - 1].id);
+    } else {
+      const newId = Date.now().toString();
+      setChats([{ id: newId, title: "New Chat", messages: [] }]);
+      setActiveChatId(newId);
+    }
+  }
+}
+
+  // ← Select chat aur messages fetch karo
+  async function selectChat(chatId: string) {
+    setActiveChatId(chatId);
+
+    // Agar messages already loaded hain toh skip karo
+    const chat = chats.find((c) => c.id === chatId);
+    if (chat && chat.messages.length > 0) return;
+
+    try {
+      const response = await api.chat.getConversation(chatId);
+      const messages: Message[] = response.messages.map((m: any) => ({
+        id: m.id,
+        role: m.role === "assistant" ? "ai" : "user",
+        content: m.content,
+        model: response.model,
+        tokensPerSec: m.tokensPerSec,
+        latency: m.latency,
+        ram: m.ram,
+        score: m.score,
+      }));
+
+      setChats((prev) =>
+        prev.map((c) => (c.id === chatId ? { ...c, messages } : c)),
+      );
+    } catch (err) {
+      console.error("Failed to fetch messages:", err);
     }
   }
 
@@ -86,21 +144,22 @@ export default function ChatPage() {
       content: message,
     };
 
-    // Add user message
     setChats((prev) =>
       prev.map((c) =>
         c.id === activeChatId
           ? {
               ...c,
-              title: c.messages.length === 0 ? message.slice(0, 30) + "..." : c.title,
+              title:
+                c.messages.length === 0
+                  ? message.slice(0, 30) + "..."
+                  : c.title,
               messages: [...c.messages, userMsg],
             }
-          : c
-      )
+          : c,
+      ),
     );
 
     try {
-      // Real API call to backend
       const response = await api.chat.send({
         message,
         model: selectedModel.id,
@@ -121,8 +180,8 @@ export default function ChatPage() {
         prev.map((c) =>
           c.id === activeChatId
             ? { ...c, messages: [...c.messages, aiMsg] }
-            : c
-        )
+            : c,
+        ),
       );
     } catch (err) {
       setError("Failed to get response. Make sure Ollama is running.");
@@ -159,8 +218,9 @@ export default function ChatPage() {
                     : "hover:bg-white/[0.03]"
                 }`}
               >
+                {/* ← selectChat use karo */}
                 <button
-                  onClick={() => setActiveChatId(chat.id)}
+                  onClick={() => selectChat(chat.id)}
                   className={`flex-1 flex items-center gap-2 px-2.5 py-2 text-left min-w-0 ${
                     chat.id === activeChatId
                       ? "text-white/80"
@@ -194,7 +254,6 @@ export default function ChatPage() {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 h-14 border-b border-white/[0.06] flex-shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger>
@@ -225,14 +284,12 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Error Banner */}
         {error && (
           <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/20 text-red-400 text-[12px]">
             {error}
           </div>
         )}
 
-        {/* Messages */}
         <ScrollArea className="flex-1 px-4 py-4">
           {activeChat.messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center py-20">
@@ -277,7 +334,6 @@ export default function ChatPage() {
                         {msg.content}
                       </div>
 
-                      {/* Real benchmark metrics */}
                       {msg.role === "ai" && msg.tokensPerSec && (
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                           <Badge
@@ -316,7 +372,6 @@ export default function ChatPage() {
                 ))}
               </AnimatePresence>
 
-              {/* Loading */}
               {isLoading && (
                 <motion.div
                   initial={{ opacity: 0 }}

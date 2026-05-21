@@ -80,3 +80,69 @@ async def chat_stream(request: ChatRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+@router.get("/conversations")
+async def get_conversations():
+    """Get all conversations from Supabase."""
+    try:
+        db = await get_db()
+        conversations = await db.conversation.find_many(
+            order={"createdAt": "desc"},
+            take=50,
+        )
+        return {
+            "conversations": [
+                {
+                    "id": c.id,
+                    "title": c.title,
+                    "model": c.model,
+                    "createdAt": c.createdAt.isoformat(),
+                }
+                for c in conversations
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/conversations/{conversation_id}")
+async def get_conversation_messages(conversation_id: str):
+    """Get all messages for a specific conversation."""
+    try:
+        db = await get_db()
+        conversation = await db.conversation.find_unique(
+            where={"id": conversation_id},
+            include={"messages": True},
+        )
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        return {
+            "id": conversation.id,
+            "title": conversation.title,
+            "model": conversation.model,
+            "messages": [
+                {
+                    "id": m.id,
+                    "role": m.role,
+                    "content": m.content,
+                    "tokensPerSec": m.tokensPerSec,
+                    "latency": m.latency,
+                    "ram": m.ram,
+                    "score": m.score,
+                    "createdAt": m.createdAt.isoformat(),
+                }
+                for m in conversation.messages
+            ],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str):
+    """Delete a conversation and all its messages."""
+    try:
+        db = await get_db()
+        await db.conversation.delete(
+            where={"id": conversation_id}
+        )
+        return {"message": "Conversation deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
